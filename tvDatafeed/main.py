@@ -365,10 +365,10 @@ class TvDatafeed:
 
             for xi in x:
                 xi = re.split("\[|:|,|\]", xi)
-                ts = datetime.datetime.fromtimestamp(float(xi[4]))
+                # ts = datetime.datetime.fromtimestamp(float(xi[4]))
                 data.append(
                     [
-                        ts,
+                        float(xi[4]),
                         float(xi[5]),
                         float(xi[6]),
                         float(xi[7]),
@@ -378,9 +378,10 @@ class TvDatafeed:
                 )
 
             data = pd.DataFrame(
-                data, columns=["datetime", "open", "high", "low", "close", "volume"]
-            ).set_index("datetime")
-            data.insert(0, "symbol", value=symbol)
+                data, columns=["time", "open", "high", "low", "close", "volume"]
+            )
+            data.set_index(pd.DatetimeIndex(pd.to_datetime(data['time'], unit='s')), inplace=True)
+            # data.insert(0, "symbol", value=symbol)
             return data
         except AttributeError:
             logger.error("no data, please check the exchange and symbol")
