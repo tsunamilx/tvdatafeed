@@ -368,7 +368,7 @@ class TvDatafeed:
                 # ts = datetime.datetime.fromtimestamp(float(xi[4]))
                 data.append(
                     [
-                        float(xi[4]),
+                        int(xi[4]),
                         float(xi[5]),
                         float(xi[6]),
                         float(xi[7]),
