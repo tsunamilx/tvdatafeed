@@ -362,20 +362,30 @@ class TvDatafeed:
             out = re.search('"s":\[(.+?)\}\]', raw_data).group(1)
             x = out.split(',{"')
             data = list()
+            volume_data = True
 
             for xi in x:
                 xi = re.split("\[|:|,|\]", xi)
                 # ts = datetime.datetime.fromtimestamp(float(xi[4]))
-                data.append(
-                    [
-                        int(float(xi[4])),
-                        float(xi[5]),
-                        float(xi[6]),
-                        float(xi[7]),
-                        float(xi[8]),
-                        float(xi[9]),
-                    ]
-                )
+                ts = float(xi[4])
+
+                row = [ts]
+
+                for i in range(5, 10):
+
+                    # skip converting volume data if does not exists
+                    if not volume_data and i == 9:
+                        row.append(0.0)
+                        continue
+                    try:
+                        row.append(float(xi[i]))
+
+                    except ValueError:
+                        volume_data = False
+                        row.append(0.0)
+                        logger.debug('no volume data')
+
+                data.append(row)
 
             data = pd.DataFrame(
                 data, columns=["time", "open", "high", "low", "close", "volume"]
