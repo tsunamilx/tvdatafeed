@@ -141,14 +141,11 @@ class TvDatafeed:
         self.token_date = datetime.date.today() - datetime.timedelta(days=1)
         self.__assert_dir()
 
-        token = None
         token = self.auth(username, password)
 
         if token is None:
             token = "unauthorized_user_token"
-            logger.warning(
-                "you are using nologin method, data you access may be limited"
-            )
+            # logger.warning("you are using nologin method, data you access may be limited")
 
         self.token = token
         self.ws = None
@@ -310,7 +307,7 @@ class TvDatafeed:
         return token
 
     def __create_connection(self):
-        logging.debug("creating websocket connection")
+        logger.debug("creating websocket connection")
         self.ws = create_connection(
             "wss://data.tradingview.com/socket.io/websocket", headers=self.headers
         )
