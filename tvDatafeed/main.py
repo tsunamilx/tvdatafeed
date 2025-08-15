@@ -1,18 +1,12 @@
-import datetime
 import enum
 import json
 import logging
-import os
-import pickle
 import random
 import re
-import shutil
 import string
-import time
 import pandas as pd
 from websocket import create_connection
 import requests
-import sys
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +191,7 @@ class TvDatafeed:
         n_bars: int = 10,
         fut_contract: int = None,
         extended_session: bool = False,
+        backadj: bool = True,
     ) -> pd.DataFrame:
         """get historical data
 
@@ -207,6 +202,7 @@ class TvDatafeed:
             n_bars (int, optional): no of bars to download, max 5000. Defaults to 10.
             fut_contract (int, optional): None for cash, 1 for continuous current contract in front, 2 for continuous next contract in front . Defaults to None.
             extended_session (bool, optional): regular session if False, extended session if True, Defaults to False.
+            backadj (bool, optional): back adjustment for continuous future contracts.
 
         Returns:
             pd.Dataframe: dataframe with sohlcv as columns
@@ -253,29 +249,32 @@ class TvDatafeed:
         )
 
         self.__send_message(
-            "quote_add_symbols", [self.session, symbol,
-                                  {"flags": ["force_permission"]}]
+            "quote_add_symbols", [self.session, symbol, {"flags": ["force_permission"]}]
         )
         self.__send_message("quote_fast_symbols", [self.session, symbol])
+
+        parts = [
+            f'"symbol":"{symbol}"',
+            '"adjustment":"splits"',
+            f'"session":"{"regular" if not extended_session else "extended"}"'
+        ]
+        # back adjustment for continuous future contracts
+        if symbol.endswith('!') and backadj:
+            parts.append('"backadjustment":"default"')
 
         self.__send_message(
             "resolve_symbol",
             [
                 self.chart_session,
                 "symbol_1",
-                '={"symbol":"'
-                + symbol
-                + '","adjustment":"splits","session":'
-                + ('"regular"' if not extended_session else '"extended"')
-                + "}",
+                f'={{{",".join(parts)}}}',
             ],
         )
         self.__send_message(
             "create_series",
             [self.chart_session, "s1", "s1", "symbol_1", interval, n_bars],
         )
-        self.__send_message("switch_timezone", [
-                            self.chart_session, "exchange"])
+        self.__send_message("switch_timezone", [self.chart_session, "exchange"])
 
         raw_data = ""
 
@@ -296,16 +295,7 @@ class TvDatafeed:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    tv = TvDatafeed(
-    )
-    print(tv.get_hist("CRUDEOIL", "MCX", fut_contract=1))
-    print(tv.get_hist("NIFTY", "NSE", fut_contract=1))
-    print(
-        tv.get_hist(
-            "EICHERMOT",
-            "NSE",
-            interval=Interval.in_1_hour,
-            n_bars=500,
-            extended_session=False,
-        )
-    )
+    tv = TvDatafeed()
+    df = tv.get_hist("NG1!", "NYMEX", n_bars=30)
+    df.index += pd.Timedelta(hours=4)
+    print(df)
